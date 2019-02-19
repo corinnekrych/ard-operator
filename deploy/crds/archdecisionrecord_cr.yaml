@@ -1,0 +1,7 @@
+apiVersion: corinnekrych.org/v1alpha1
+kind: ArchDecisionRecord
+metadata:
+  name: example-archdecisionrecord
+spec:
+  # Add fields here
+  size: 3
