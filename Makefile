@@ -15,6 +15,30 @@ build: format ; $(info $(M) Build operator docker images with $(CONTAINER_CENTRA
 	operator-sdk generate k8s
 	operator-sdk build $(CONTAINER_CENTRAL_REPO)/$(REPO_ORG)/${PROJECT_NAME}
 
+.PHONY: deploy-rbac
+deploy-rbac: ; $(info $(M) Setup service account and deploy RBAC )
+	oc create -f deploy/service_account.yaml
+	oc create -f deploy/role.yaml
+	oc create -f deploy/role_binding.yaml
+
+.PHONY: deploy-crd
+deploy-crd: ; $(info $(M) Deploy CRD )
+	oc create -f deploy/crds/archdecisionrecord_crd.yaml
+
+.PHONY: deploy-operator
+deploy-operator: deploy-crd ; $(info $(M) Deploy Operator )
+	oc create -f deploy/operator.yaml
+
+.PHONY: deploy-test
+deploy-test: ; $(info $(M) Deploy a CR as testr )
+	oc create -f deploy/crds/archdecisionrecord_cr.yaml
+
+.PHONY: clean
+clean: ; $(info $(M) Clean deployment )
+	@-oc delete deployment adr-operator
+	@-oc delete crd archdecisionrecords.corinnekrych.org
+	@-oc delete pods --all
+
 .PHONY: format
 format: ; $(info $(M) Checking code style )
 	@fmtRes=$$($(GOFMT) -d $$(find . -path ./vendor -prune -o -name '*.go' -print)); \
