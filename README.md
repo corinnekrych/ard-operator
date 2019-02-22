@@ -2,7 +2,7 @@
 
 ADR stands for [Architecture Decision Record](https://adr.github.io/). 
 The concept is simple: let's make the decisions that driv your project explicit.
-In this (simple) implementation of ADR, we stick to the KISS priciple:
+In this (simple) implementation of ADR, we stick to the KISS principle:
 - ARD is written in plain text or similar markdown, asciidoc.
 - ARD is kept where it belongs: source code.
 
@@ -89,10 +89,8 @@ make deploy-operator
 #### Option 3: Dev mode
 In dev mode, no need to package in container and deploy, simply run your operator locally:
 ```
-make deploy-crd
-operator-sdk up local --kubeconfig=$HOME/.kube/config --namespace=myproject
+make local
 ```
-> Note: if namespace is not specified, it applies to default
 
 ### Deploy the CR for testing
 Make sure minishift is running:

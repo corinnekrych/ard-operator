@@ -10,9 +10,10 @@ import (
 // ArchDecisionRecordSpec defines the desired state of ArchDecisionRecord
 // +k8s:openapi-gen=true
 type ArchDecisionRecordSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
-	// Add custom validation using kubebuilder tags: https://book.kubebuilder.io/beyond_basics/generating_crd.html
+    // Container image use to build
+	Image string	`json:"image"`
+	// Location of the source ir: github url, where the ADR is located
+	Source string   `json:"source"`
 }
 
 // ArchDecisionRecordStatus defines the observed state of ArchDecisionRecord
@@ -21,6 +22,7 @@ type ArchDecisionRecordStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book.kubebuilder.io/beyond_basics/generating_crd.html
+	Steps []Step		`json:"steps,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -47,3 +49,16 @@ type ArchDecisionRecordList struct {
 func init() {
 	SchemeBuilder.Register(&ArchDecisionRecord{}, &ArchDecisionRecordList{})
 }
+type Step struct {
+	Name StepName `json:"name,omitempty"`
+	Phase Phase `json:"phase,omitempty"`
+}
+type Phase string
+const (
+	Creating Phase = "Creating"
+	Created Phase = "Created"
+)
+type StepName string
+const (
+	ImageStreamCreate StepName = "ImageStreamCreate"
+)

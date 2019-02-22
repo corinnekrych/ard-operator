@@ -1,6 +1,7 @@
 VERSION     	?= unset
 GITCOMMIT    	:= $(shell git rev-parse --short HEAD 2>/dev/null)
 PROJECT_NAME 	:= adr-operator
+OC_PROJECT      := myproject
 BIN_DIR      	:= ./build/_output/bin
 REPO_ORG     	:= corinnekrych
 REPO_PATH    	:= github.com/$(REPO_ORG)/$(PROJECT_NAME)
@@ -11,9 +12,15 @@ GO           	?= go
 GOFMT        	?= $(GO)fmt
 
 .PHONY: build
-build: format ; $(info $(M) Build operator docker images with $(CONTAINER_CENTRAL_REPO) )
+build: ; $(info $(M) Build operator docker images with $(CONTAINER_CENTRAL_REPO) )
 	operator-sdk generate k8s
+	operator-sdk generate openapi
 	operator-sdk build $(CONTAINER_CENTRAL_REPO)/$(REPO_ORG)/${PROJECT_NAME}
+
+.PHONY: local
+local: build deploy-crd; $(info $(M) Run Operator locally)
+	@-oc new-project $(OC_PROJECT)
+	operator-sdk up local --namespace=$(OC_PROJECT)
 
 .PHONY: deploy-rbac
 deploy-rbac: ; $(info $(M) Setup service account and deploy RBAC )
@@ -23,7 +30,8 @@ deploy-rbac: ; $(info $(M) Setup service account and deploy RBAC )
 
 .PHONY: deploy-crd
 deploy-crd: ; $(info $(M) Deploy CRD )
-	oc create -f deploy/crds/archdecisionrecord_crd.yaml
+	@-oc delete crd archdecisionrecords.corinnekrych.org
+	@-oc create -f deploy/crds/corinnekrych_v1alpha1_archdecisionrecord_crd.yaml
 
 .PHONY: deploy-operator
 deploy-operator: deploy-crd ; $(info $(M) Deploy Operator )
@@ -31,7 +39,7 @@ deploy-operator: deploy-crd ; $(info $(M) Deploy Operator )
 
 .PHONY: deploy-test
 deploy-test: ; $(info $(M) Deploy a CR as testr )
-	oc create -f deploy/crds/archdecisionrecord_cr.yaml
+	oc create -f deploy/crds/corinnekrych_v1alpha1_archdecisionrecord_cr.yaml
 
 .PHONY: clean
 clean: ; $(info $(M) Clean deployment )
