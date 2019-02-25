@@ -1,7 +1,7 @@
 apiVersion: corinnekrych.org/v1alpha1
 kind: ArchDecisionRecord
 metadata:
-  name: example-archdecisionrecord
+  name: myadr
 spec:
   image: "nodejs"
   source: "todo"

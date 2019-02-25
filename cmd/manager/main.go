@@ -10,6 +10,8 @@ import (
 	"github.com/corinnekrych/adr-operator/pkg/apis"
 	"github.com/corinnekrych/adr-operator/pkg/controller"
 
+	buildv1 "github.com/openshift/api/build/v1"
+	imagev1 "github.com/openshift/api/image/v1"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	"github.com/operator-framework/operator-sdk/pkg/leader"
 	"github.com/operator-framework/operator-sdk/pkg/log/zap"
@@ -21,7 +23,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
-	imagev1 "github.com/openshift/api/image/v1"
 )
 
 // Change below variables to serve metrics on different host or port.
@@ -103,7 +104,11 @@ func main() {
 		log.Error(err, "")
 		os.Exit(1)
 	}
-	
+	if err := buildv1.AddToScheme(mgr.GetScheme()); err != nil {
+		log.Error(err, "")
+		os.Exit(1)
+	}
+
 	// Setup all Controllers
 	if err := controller.AddToManager(mgr); err != nil {
 		log.Error(err, "")

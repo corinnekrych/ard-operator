@@ -1,7 +1,7 @@
 VERSION     	?= unset
 GITCOMMIT    	:= $(shell git rev-parse --short HEAD 2>/dev/null)
 PROJECT_NAME 	:= adr-operator
-OC_PROJECT      := myproject
+OC_PROJECT      ?= myproject
 BIN_DIR      	:= ./build/_output/bin
 REPO_ORG     	:= corinnekrych
 REPO_PATH    	:= github.com/$(REPO_ORG)/$(PROJECT_NAME)
@@ -15,7 +15,7 @@ GOFMT        	?= $(GO)fmt
 build: ; $(info $(M) Build operator docker images with $(CONTAINER_CENTRAL_REPO) )
 	operator-sdk generate k8s
 	operator-sdk generate openapi
-	operator-sdk build $(CONTAINER_CENTRAL_REPO)/$(REPO_ORG)/${PROJECT_NAME}
+	#operator-sdk build $(CONTAINER_CENTRAL_REPO)/$(REPO_ORG)/${PROJECT_NAME}
 
 .PHONY: local
 local: build deploy-crd; $(info $(M) Run Operator locally)
@@ -45,7 +45,7 @@ deploy-test: ; $(info $(M) Deploy a CR as testr )
 clean: ; $(info $(M) Clean deployment )
 	@-oc delete deployment adr-operator
 	@-oc delete crd archdecisionrecords.corinnekrych.org
-	@-oc delete pods --all
+	@-oc delete pod
 
 .PHONY: format
 format: ; $(info $(M) Checking code style )
