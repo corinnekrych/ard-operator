@@ -4,4 +4,4 @@ metadata:
   name: myadr
 spec:
   image: "nodejs"
-  source: "todo"
+  source: "https://github.com/sclorg/nodejs-ex.git"

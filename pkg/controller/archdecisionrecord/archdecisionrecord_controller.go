@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"k8s.io/apimachinery/pkg/types"
-	"strconv"
 	"math/rand"
+	"strconv"
 
 	corinnekrychv1alpha1 "github.com/corinnekrych/adr-operator/pkg/apis/corinnekrych/v1alpha1"
 
@@ -24,6 +24,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
+	appsv1 "github.com/openshift/api/apps/v1"
 	buildv1 "github.com/openshift/api/build/v1"
 	// api clientsets
 	//appsschema "github.com/openshift/client-go/apps/clientset/versioned/scheme"
@@ -129,11 +130,11 @@ func (r *ReconcileArchDecisionRecord) Reconcile(request reconcile.Request) (reco
 	_, errStream := r.GetImageStream(instance.Spec.Image, instance)
 	if errStream != nil && errors.IsNotFound(errStream) {
 		log.Error(err, ":::::::: No image stream found ::::::::")
-		//return reconcile.Result{}, err
+		return reconcile.Result{}, err
 	}
-	// 2) check if img already exist or create an empty image
-	rand := "affected"//randomString(5)
-	newImage := newImageStream(instance.Namespace, instance.Name, fmt.Sprintf("%s-%s", instance.Spec.Image + "-generated", rand))
+	// 2) Create an empty image name "nodejs-generated-xxxx"
+	rand := "xxxx"//randomString(5)
+	newImage := newImageStreamObjectMeta(instance.Namespace, instance.Name, fmt.Sprintf("%s-%s", instance.Spec.Image + "-generated", rand))
 	err = r.client.Create(context.TODO(), newImage)
 	if err != nil {
 		log.Error(err, ":::::::: Creating new image fails ::::::::")
@@ -146,14 +147,35 @@ func (r *ReconcileArchDecisionRecord) Reconcile(request reconcile.Request) (reco
 		return reconcile.Result{}, err
 	}
 
-	// 3) create build config with s2i
-	bc := generateBuildConfig(instance.Name, instance.Spec.Source, "", instance.Spec.Image + ":latest", "openshift")
+	// 3) Create build config with s2i
+	imageNamespace := "openshift" // todo fix that
+	bc := generateBuildConfig(instance.Name, instance.Spec.Source, "", instance.Spec.Image + ":latest", imageNamespace)
 	err = r.client.Create(context.TODO(), &bc)
 	if err != nil {
 		log.Error(err, ":::::::: Creating build config fails ::::::::")
 		return reconcile.Result{}, err
 	}
 	log.Info(":::::::: Build config created ::::::::")
+
+	// 4) Create deployment config
+    dc := generateGitDeploymentConfig(getMetaObj(instance.Name, imageNamespace), "nodejs-generated-xxxx:latest")
+	err = r.client.Create(context.TODO(), &dc)
+	if err != nil {
+		log.Error(err, ":::::::: Creating deployment config fails ::::::::")
+		return reconcile.Result{}, err
+	}
+	log.Info(":::::::: Build deployment created ::::::::")
+
+	// 5) Start build
+	retrievedBC := buildv1.BuildConfig{ObjectMeta: getMetaObj(instance.Name, instance.Namespace)} // todo labels selector?
+	errFetchBC := r.client.Get(context.TODO(), request.NamespacedName, &retrievedBC)
+	if errFetchBC != nil {
+		log.Error(err, ":::::::: Fetching build config (to instantiate build) fails ::::::::")
+		return reconcile.Result{}, err
+	}
+	// todo use k8s api to instantiate build
+	log.Info(":::::::: Fetching build config succeed ::::::::")
+	//retrievedBC
 	// Pod already exists - don't requeue
 	//reqLogger.Info("Skip reconcile: Pod already exists", "Pod.Namespace", found.Namespace, "Pod.Name", found.Name)
 	return reconcile.Result{}, nil
@@ -172,7 +194,7 @@ func randomString(len int) string {
 }
 
 func (r *ReconcileArchDecisionRecord) GetImageStream(imageName string, instance *corinnekrychv1alpha1.ArchDecisionRecord) (*imagev1.ImageStream, error) {
-	imageStream := newImageStream(instance.Namespace, instance.Name, instance.Spec.Image)
+	imageStream := newImageStreamObjectMeta(instance.Namespace, instance.Name, instance.Spec.Image)
 	found := &imagev1.ImageStream{}
 	err := r.client.Get(context.TODO(), types.NamespacedName{Name: imageStream.Name, Namespace: imageStream.Namespace}, found)
 	if err != nil {
@@ -190,7 +212,7 @@ func (r *ReconcileArchDecisionRecord) GetImageStream(imageName string, instance 
 	return found, nil
 }
 
-func newImageStream(namespace string, name string, imageName string) *imagev1.ImageStream {
+func newImageStreamObjectMeta(namespace string, name string, imageName string) *imagev1.ImageStream {
 	labels := map[string]string{
 		"app": name,
 	}
@@ -201,11 +223,14 @@ func newImageStream(namespace string, name string, imageName string) *imagev1.Im
 	}}
 }
 
-// generateBuildConfig creates a BuildConfig for Git URL's being passed into Odo
-func generateBuildConfig(name string, gitURL, gitRef, imageName, imageNamespace string) buildv1.BuildConfig {
+func getMetaObj(name string, imageNamespace string) metav1.ObjectMeta {
 	labels := map[string]string{
 		"app": name,
 	}
+	return metav1.ObjectMeta{Name: name, Namespace:imageNamespace, Labels: labels}
+}
+// generateBuildConfig creates a BuildConfig for Git URL's being passed into Odo
+func generateBuildConfig(name string, gitURL, gitRef, imageName, imageNamespace string) buildv1.BuildConfig {
 	buildSource := buildv1.BuildSource{
 		Git: &buildv1.GitBuildSource{
 			URI: gitURL,
@@ -215,7 +240,7 @@ func generateBuildConfig(name string, gitURL, gitRef, imageName, imageNamespace 
 	}
 
 	return buildv1.BuildConfig{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace:imageNamespace, Labels: labels},
+		ObjectMeta: getMetaObj(name, imageNamespace),
 		Spec: buildv1.BuildConfigSpec{
 			CommonSpec: buildv1.CommonSpec{
 				Output: buildv1.BuildOutput{
@@ -237,4 +262,71 @@ func generateBuildConfig(name string, gitURL, gitRef, imageName, imageNamespace 
 			},
 		},
 	}
+}
+
+func generateGitDeploymentConfig(commonObjectMeta metav1.ObjectMeta, image string) appsv1.DeploymentConfig {
+	ports := make([]corev1.ContainerPort, 0)
+	ports = append(ports, corev1.ContainerPort{Name: "8080-tcp", ContainerPort:8080})
+
+	dc := appsv1.DeploymentConfig{
+		ObjectMeta: commonObjectMeta,
+		Spec: appsv1.DeploymentConfigSpec{
+			Replicas: 1,
+			Strategy: appsv1.DeploymentStrategy{
+				Type: appsv1.DeploymentStrategyTypeRecreate,
+			},
+			Selector: map[string]string{
+				"deploymentconfig": commonObjectMeta.Name,
+			},
+			Template: &corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"deploymentconfig": commonObjectMeta.Name,
+					},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Image: image,
+							Name:  commonObjectMeta.Name,
+							Ports: ports,
+							Env:   nil, // todo
+						},
+					},
+				},
+			},
+			Triggers: []appsv1.DeploymentTriggerPolicy{
+				{
+					Type: "ConfigChange",
+				},
+				{
+					Type: "ImageChange",
+					ImageChangeParams: &appsv1.DeploymentTriggerImageChangeParams{
+						Automatic: true,
+						ContainerNames: []string{
+							commonObjectMeta.Name,
+						},
+						From: corev1.ObjectReference{
+							Kind: "ImageStreamTag",
+							Name: image,
+						},
+					},
+				},
+			},
+		},
+	}
+	// todo
+	//containerIndex := -1
+	//if resourceRequirements != nil {
+	//	for index, container := range dc.Spec.Template.Spec.Containers {
+	//		if container.Name == commonObjectMeta.Name {
+	//			containerIndex = index
+	//			break
+	//		}
+	//	}
+	//	if containerIndex != -1 {
+	//		dc.Spec.Template.Spec.Containers[containerIndex].Resources = *resourceRequirements
+	//	}
+	//}
+	return dc
 }

@@ -39,6 +39,7 @@ deploy-operator: deploy-crd ; $(info $(M) Deploy Operator )
 
 .PHONY: deploy-test
 deploy-test: ; $(info $(M) Deploy a CR as testr )
+	@-oc delete imagestream.image.openshift.io/nodejs-generated-xxxx buildconfig.build.openshift.io/myadr deploymentconfig.apps.openshift.io/myadr
 	oc create -f deploy/crds/corinnekrych_v1alpha1_archdecisionrecord_cr.yaml
 
 .PHONY: clean

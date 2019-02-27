@@ -12,6 +12,7 @@ import (
 
 	buildv1 "github.com/openshift/api/build/v1"
 	imagev1 "github.com/openshift/api/image/v1"
+	appsv1 "github.com/openshift/api/apps/v1"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	"github.com/operator-framework/operator-sdk/pkg/leader"
 	"github.com/operator-framework/operator-sdk/pkg/log/zap"
@@ -108,7 +109,10 @@ func main() {
 		log.Error(err, "")
 		os.Exit(1)
 	}
-
+	if err := appsv1.AddToScheme(mgr.GetScheme()); err != nil {
+		log.Error(err, "")
+		os.Exit(1)
+	}
 	// Setup all Controllers
 	if err := controller.AddToManager(mgr); err != nil {
 		log.Error(err, "")
