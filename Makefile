@@ -44,9 +44,14 @@ deploy-test: ; $(info $(M) Deploy a CR as testr )
 
 .PHONY: clean
 clean: ; $(info $(M) Clean deployment )
-	@-oc delete deployment adr-operator
-	@-oc delete crd archdecisionrecords.corinnekrych.org
-	@-oc delete pod
+	@-oc delete imagestream.image.openshift.io/nodejs-runtime
+	@-oc delete imagestream.image.openshift.io/nodejs-output
+	@-oc delete buildconfig.build.openshift.io/myadr-bc
+	@-oc delete deploymentconfig.apps.openshift.io/myadr
+	@-oc delete archdecisionrecord.corinnekrych.org/myadr
+	#@-oc delete deployment adr-operator
+	#@-oc delete crd archdecisionrecords.corinnekrych.org
+	#@-oc delete pod
 
 .PHONY: format
 format: ; $(info $(M) Checking code style )

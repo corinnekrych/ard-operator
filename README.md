@@ -10,7 +10,7 @@ The intend of this repo is to provide an OpenShift operator that takes
 your project repositories, search for `docs` folder and deploy 
 the documentation on OpenShit.
 
-This repository was initially boostrapped using [CoreOS operator](https://github.com/operator-framework/operator-sdk). 
+This repository was initially bootstrapped using [CoreOS operator](https://github.com/operator-framework/operator-sdk). 
 
 ## Build
 
@@ -93,9 +93,33 @@ make local
 ```
 
 ### Deploy the CR for testing
-Make sure minishift is running:
+* Make sure minishift is running and you're on myproject
+```
+oc project myproject
+```
+* clean all generated resources from previsous run
+```
+make clean
+```
+* Deploy CR 
 ```
 make deploy-test
+```
+* Check the k8s resources were created:
+```
+oc get is,bc,svc,archdecisionrecord,build
+NAME                                            DOCKER REPO                                TAGS      
+imagestream.image.openshift.io/nodejs-output    172.30.1.1:5000/myproject/nodejs-output    latest
+imagestream.image.openshift.io/nodejs-runtime   172.30.1.1:5000/myproject/nodejs-runtime   latest
+
+NAME                                      TYPE      FROM         LATEST
+buildconfig.build.openshift.io/myadr-bc   Source    Git@master   1
+
+NAME                                        AGE
+archdecisionrecord.corinnekrych.org/myadr   2m
+
+NAME                                  TYPE      FROM          STATUS
+build.build.openshift.io/myadr-bc-1   Source    Git@85ac14e   Complete
 ```
 
 [dep_tool]:https://golang.github.io/dep/docs/installation.html

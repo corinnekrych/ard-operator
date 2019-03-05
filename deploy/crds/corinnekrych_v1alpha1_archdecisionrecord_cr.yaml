@@ -4,4 +4,4 @@ metadata:
   name: myadr
 spec:
   image: "nodejs"
-  source: "https://github.com/sclorg/nodejs-ex.git"
+  source: "https://github.com/nodeshift-starters/nodejs-rest-http-crud"
